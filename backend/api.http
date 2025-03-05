@@ -1,0 +1,62 @@
+POST http://localhost:9090/register HTTP/1.1
+content-Type:application/json
+
+{
+    "username": "User1",
+    "password": "examplePass",
+    "email": "usere@gmail.com",
+    "name": "user45"
+}
+
+###
+
+POST http://localhost:9090/login HTTP/1.1
+content-Type:application/json
+
+{
+    "email":"example@example.com",
+    "password": "examplePass"
+} 
+
+###
+
+GET http://localhost:9090/get_user_and_profile HTTP/1.1
+content-Type:application/json
+
+{
+    "token":"ce50659f40617d8973c716ba6553ceb80796484b9b70c881aa544d311d360d75"
+}
+
+###
+
+POST http://localhost:9090/update_profile_data HTTP/1.1
+content-Type:application/json
+
+{
+    "token":"3f5d3f9616c73340cbe57b15da5613aecb9fa84a7515d35da8a016f1a79f72d6",
+    "bio":"A Problem solver",
+    "currentPost":"SDE1",
+    "pastWork":[
+        {
+            "company":"Microsoft",
+            "position":"SDE1",
+            "years":"2+"
+        }
+    ],
+    "education":[
+        {
+            "school":"IIITDM",
+            "degree":"B.Tech",
+            "fieldOfStudy":"Computer Science"
+        }
+    ]
+}
+
+###
+
+GET http://localhost:9090/get_all_users HTTP/1.1
+content-Type:application/json
+
+{
+    
+}

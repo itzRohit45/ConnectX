@@ -1,0 +1,68 @@
+.container
+{
+  max-height: 500px; 
+  overflow-y: auto;
+  padding-right: 10px; 
+  margin-bottom: 1.5rem; 
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.7rem;
+}
+
+.userCard {
+    display: flex;
+    width: 90%;
+    gap: 1.4rem; 
+    padding: 1.4rem;
+    align-items: center;
+    box-shadow: 0px 10px 20px rgba(0, 0, 0, 0.1); 
+    border-radius: 10px;
+    margin-top: 10px;
+    cursor: pointer;
+  }
+  
+
+  .profilePic > img {
+    width: 6.5rem;
+    height: 6.5rem; 
+    border-radius: 50%;
+    object-fit: cover; 
+    border: 2px solid #ddd;
+  }
+  
+  .userInfo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+  }
+  
+  .userInfo h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #333;
+    margin: 0;
+  }
+  
+  .userInfo h3:hover{
+    color: rgba(157, 0, 255, 0.472);
+    text-decoration: underline;
+  }
+  .userInfo p {
+    font-size: 1rem;
+    color: #666; 
+    margin: 0;
+  }
+  
+
+  .connectedBtn
+{
+    margin-top: 6px;
+    padding-inline: 0.8rem;
+    padding-block: 0.3rem;
+    outline: none;
+    border: 1px solid blue;
+    color: rgba(3, 48, 183, 0.905);
+    border-radius: 10px;
+    cursor: pointer;
+}

@@ -1,0 +1,92 @@
+.container
+{
+    font-family: "Poppins";
+    padding: 1.2rem;
+}
+
+.mainContainer{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 4rem;
+    padding-inline: 2rem;
+    height: 80vh;
+}
+.mainContainer_left{
+    flex: 0.5;
+}
+.mainContainer_right{
+    flex: 0.5;
+}
+
+.mainContainer_left > p:nth-child(1){
+    font-size: 2.4rem;
+    background: -webkit-linear-gradient(45deg,#000000,#b2b2b2);
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: bold;
+}
+
+.mainContainer_left > p:nth-child(2){
+    color: #4d4d4d;
+    font-size: 1.6rem;
+}
+.mainContainer_left > div.buttonJoin{
+    width: fit-content;
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s;
+    margin-top: 0.8rem;
+    font-size: 1.4rem;
+    color: white;
+    background-color: rgba(214, 127, 141, 0.902);
+    padding-inline: 1.2rem;
+    padding-block: 0.6rem;
+    border-radius: 20px;
+}
+
+@media screen and (max-width: 600px) {
+    .mainContainer {
+        flex-direction: column !important;
+        align-items: center !important;
+        justify-content: center !important;
+        gap: 1.5rem !important;
+        padding: 1rem !important;
+        text-align: center !important;
+    }   
+
+    .mainContainer_left {
+        width: 100% !important;
+        padding-top: 1rem !important;
+    }
+
+    .mainContainer_left p:nth-child(1) {
+        font-size: 1.8rem !important; 
+        line-height: 1.2 !important;
+        word-wrap: break-word !important;
+    }
+
+    .mainContainer_left p:nth-child(2) {
+        font-size: 1.2rem !important;
+        color: #555 !important;
+    }
+
+    .buttonJoin {
+        display: inline-block !important;
+        margin-top: 1rem !important;
+        font-size: 1.2rem !important;
+        padding: 0.6rem 1rem !important;
+    }
+
+    .mainContainer_right {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+    }
+
+    .mainContainer_right img {
+        max-width: 80% !important;
+        height: auto !important;
+    }
+}
+

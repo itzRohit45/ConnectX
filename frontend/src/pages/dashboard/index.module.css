@@ -1,0 +1,387 @@
+.scrollComponent
+{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+.createPostContainer
+{
+display: flex;
+height: 12svh;
+width: 75%;
+padding-inline: 0.8rem;
+gap: 1.3rem;
+background:rgb(255,246,246);
+align-items: center;
+border-radius: 20px;
+justify-content: center;
+position: relative;
+}
+
+.uploadButton{
+    position: absolute;
+    right: 0;
+    bottom: -55px;
+    color: white;
+    background: rgb(2,93,158);
+    border-radius: 10px;
+    padding-inline: 1.2rem;
+    padding-block: 0.8rem;
+    cursor: pointer;
+}
+.createPostContainer > textarea
+{
+    width: 100%;
+    height: 80%;
+    resize: none;
+    padding: 1rem;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    outline: none;
+    transition: border-color 0.3s ease;
+}
+
+.createPostContainer > textarea:focus {
+    border-color: rgba(0, 0, 255, 0.5);
+}
+
+.userProfile {
+   
+    border-radius: 50%;
+    width: 65px;
+    height: 65px;
+    object-fit: cover;
+    border: 1px solid black;
+}
+
+.Fab{
+    background-color: rgba(0, 0, 255, 0.545);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 45px;
+    height: 45px;
+    transition: background-color 0.3s ease;
+}
+.Fab:hover {
+    background-color: rgba(0, 0, 255, 0.8);
+}
+
+.Fab > svg{
+width: fit-content;
+height: 40px;
+color: white;
+}
+
+.textArea
+{
+    width: 80%;
+    height: 70%;
+    border: 1px solid silver;
+    border-radius: 10px;
+    font-family: Arial, Helvetica, sans-serif;
+    padding-inline: 1.5rem;
+    padding-block: 0.8rem;
+    outline: none;
+}
+
+.postsContainer {
+    width: 70%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.2rem;
+    margin-top: 2.5rem;
+    
+}
+
+.singleCard {
+    background: #ffffff;  
+    border-radius: 12px;
+    box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.08);
+    padding: 1.5rem;
+    transition: transform 0.2s ease-in-out, box-shadow 0.3s ease;
+    
+}
+
+.singleCard:hover {
+    box-shadow: 0px 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+
+.singleCard_profile {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-bottom: 0.8rem;
+}
+
+
+.userName {
+    font-weight: bold;
+    font-size: 1rem;
+    color: #222;
+}
+
+.userHandle {
+    font-size: 0.85rem;
+    color: #777;
+}
+
+
+.postBody {
+    font-size: 1rem;
+    color: #333;
+    margin-bottom: 0.8rem;
+}
+
+/* Image Styling */
+.singleCard_image {
+    width: 100%;
+    height: fit-content;
+    overflow: hidden;
+    border-radius: 10px;
+}
+
+.singleCard_image img {
+    width: 100%;
+    height: auto;
+    object-fit: cover;
+    border-radius: 10px;
+}
+.userInfo {
+    display: flex;
+    justify-content: space-between; 
+    align-items: center;
+    width: 100%; 
+  }
+  
+  .userName {
+    font-weight: bold;
+    font-size: 1rem;
+  }
+  
+  .userHandle {
+    color: gray;
+    font-size: 0.9rem;
+  }
+  
+  .trashIcon {
+    height: 1.4em;
+    color: red;
+    cursor: pointer; 
+    transition: 0.3s;
+  }
+  
+  .trashIcon:hover {
+    color: darkred;
+    font-weight: bold;
+  }
+  
+
+  .optionsContainer {
+    display: flex;
+    justify-content: space-around; 
+    align-items: center;
+    padding: 10px 0;
+    margin-top: 5px;
+    width: 100%;
+    max-width: 500px;
+    margin-left: 15px;
+  }
+  
+  .options {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    font-size: 18px;
+    color: #555;
+    transition: color 0.3s ease;
+    justify-content: center;
+  }
+  
+  .options:hover {
+    color: #000;
+    transform: scale(1.1);
+  }
+  
+  .icon {
+    width: 25px;
+    height: 25px;
+    stroke: currentColor;
+  }
+  
+.commentsContainer
+{
+    position:fixed;
+    width: 100vw;
+    height: 100vh;
+    top: 0;
+    left: 0;
+    z-index: 2;
+    background: rgb(0,0,0,0.7);
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.postCommentContainer>input
+{
+    flex: 0.9;
+    padding-inline: 1.5rem;
+    padding-block: 1.2rem;
+    border: none;
+    outline: none;
+    background-color: rgb(228,228,228);
+    border-radius: 10px;
+}
+
+.postCommentContainer>input:focus
+{
+    border: 1px solid silver;
+}
+
+.postCommentContainer_btn
+{
+flex: 0.1;
+width: fit-content;
+background: rgb(77, 255, 0);
+border-radius: 10px;
+text-align: center;
+color: white;
+cursor: pointer;
+padding-inline: 1.2rem;
+padding-block: 1.1rem;
+}
+
+.singleComment {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px; 
+    margin-bottom: 14px;
+    box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.1); 
+    transition: all 0.3s ease-in-out;
+
+  }
+  
+  .singleComment:hover {
+    transform: scale(1.02); 
+  }
+  
+  .singleComment_profileContainer {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 5px;
+  }
+  
+  .singleComment_profileContainer img {
+    height: 50px;
+    width: 50px;
+    border-radius: 50%;
+    border: 2px solid #ddd;
+    object-fit: cover;
+  }
+  
+  .singleComment_profileContainer div {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .singleComment_profileContainer p {
+    margin: 0;
+  }
+  
+  .singleComment_profileContainer p:first-child {
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: #333;
+  }
+  
+  .singleComment_profileContainer p:last-child {
+    color: #666;
+    font-size: 0.9rem;
+  }
+  
+  .singleComment p:last-child {
+    color: #444;
+    font-size: 1rem;
+    margin-top: 5px;
+    line-height: 1.5;
+  }
+  
+
+
+  .allCommentsContainer {
+    min-width: 40svh;
+    width: 45vw;
+    height: 80vh;
+    max-width: 11120px;
+    background: white;
+    border-radius: 10px;
+    position: relative;
+    padding: 1.4rem;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+
+.commentsList {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 10px;
+    padding-bottom: 5rem;  
+}
+
+.postCommentContainer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 1rem;
+    background: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1.2rem;
+}
+
+
+.commentsList::-webkit-scrollbar {
+    width: 8px; 
+}
+
+.commentsList::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.commentsList::-webkit-scrollbar-thumb {
+    background: #bbb;
+    border-radius: 10px;
+    transition: background 0.3s ease-in-out;
+}
+
+.commentsList::-webkit-scrollbar-thumb:hover {
+    background: #888; 
+}
+
+.commentsList {
+    scrollbar-width: thin;
+    scrollbar-color: #bbb #f1f1f1;
+}
+
+
+@media screen and (max-width:600px) {
+  .allCommentsContainer{
+    width: 95%;
+  }
+}
