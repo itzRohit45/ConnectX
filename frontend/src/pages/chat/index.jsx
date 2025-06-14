@@ -49,7 +49,22 @@ const Chat = () => {
       // Initialize socket connection
       try {
         console.log("Initializing socket connection with user ID:", user._id);
-        initializeSocket(user._id);
+
+        // First check if we have a socket already
+        const existingSocket = getSocket();
+
+        if (existingSocket && existingSocket.connected) {
+          console.log(
+            "Socket already exists and is connected:",
+            existingSocket.id
+          );
+          // Make sure we're in the room
+          existingSocket.emit("join", user._id);
+        } else {
+          // Initialize or reconnect as needed
+          console.log("No connected socket found, initializing");
+          initializeSocket(user._id);
+        }
 
         // Check socket connection status periodically
         const intervalId = setInterval(() => {
@@ -63,6 +78,12 @@ const Chat = () => {
             );
             reconnectSocket(user._id);
             setRetryCount((prev) => prev + 1);
+          } else if (status.connected) {
+            // Reset retry count when connected
+            setRetryCount(0);
+            if (errorState?.type === "socket") {
+              setErrorState(null); // Clear socket error when connected
+            }
           }
         }, 5000);
 
@@ -75,7 +96,7 @@ const Chat = () => {
         });
       }
     }
-  }, [user?._id]);
+  }, [user?._id, errorState]);
 
   // Get user conversations with error handling and retries
   useEffect(() => {
@@ -143,51 +164,57 @@ const Chat = () => {
     if (user?._id) {
       // Listen for socket events
       const socket = getSocket();
-      if (socket) {
-        socket.on("private message", (message) => {
-          dispatch(addMessage(message));
-
-          // Mark as read if it's in the current chat
-          if (
-            chatState.currentChat.user &&
-            message.sender._id === chatState.currentChat.user._id
-          ) {
-            const token = localStorage.getItem("token");
-            if (token) {
-              dispatch(
-                markMessagesAsRead({
-                  token,
-                  senderId: message.sender._id,
-                })
-              );
-            }
-          }
-        });
-
-        socket.on("typing", (data) => {
-          if (
-            chatState.currentChat.user &&
-            data.sender === chatState.currentChat.user._id
-          ) {
-            dispatch(setTypingStatus({ sender: data.sender, isTyping: true }));
-          }
-        });
-
-        socket.on("stop typing", (data) => {
-          if (
-            chatState.currentChat.user &&
-            data.sender === chatState.currentChat.user._id
-          ) {
-            dispatch(setTypingStatus({ sender: data.sender, isTyping: false }));
-          }
-        });
-
-        return () => {
-          socket.off("private message");
-          socket.off("typing");
-          socket.off("stop typing");
-        };
+      if (!socket) {
+        console.error("Failed to get socket - may need to initialize first");
+        // Try to initialize if it's not already done
+        initializeSocket(user._id);
+        return; // We'll try again on next render when socket is ready
       }
+
+      socket.on("private message", (message) => {
+        console.log("Received private message:", message);
+        dispatch(addMessage(message));
+
+        // Mark as read if it's in the current chat
+        if (
+          chatState.currentChat.user &&
+          message.sender._id === chatState.currentChat.user._id
+        ) {
+          const token = localStorage.getItem("token");
+          if (token) {
+            dispatch(
+              markMessagesAsRead({
+                token,
+                senderId: message.sender._id,
+              })
+            );
+          }
+        }
+      });
+
+      socket.on("typing", (data) => {
+        if (
+          chatState.currentChat.user &&
+          data.sender === chatState.currentChat.user._id
+        ) {
+          dispatch(setTypingStatus({ sender: data.sender, isTyping: true }));
+        }
+      });
+
+      socket.on("stop typing", (data) => {
+        if (
+          chatState.currentChat.user &&
+          data.sender === chatState.currentChat.user._id
+        ) {
+          dispatch(setTypingStatus({ sender: data.sender, isTyping: false }));
+        }
+      });
+
+      return () => {
+        socket.off("private message");
+        socket.off("typing");
+        socket.off("stop typing");
+      };
     }
   }, [user?._id, chatState.currentChat.user, dispatch]);
 
@@ -205,12 +232,23 @@ const Chat = () => {
     return () => window.removeEventListener("resize", checkMobileView);
   }, []);
 
-  // Auto-hide sidebar when user selects a chat on mobile
+  // Handle mobile layout when user selects a chat or changes screen size
   useEffect(() => {
+    // If we have a receiver ID and we're on mobile, switch to chat view
     if (isMobileView && receiverId) {
       setShowSidebar(false);
     }
-  }, [isMobileView, receiverId]);
+
+    // If we switch from desktop to mobile and have an active chat, show the chat instead of sidebar
+    if (isMobileView && chatState.currentChat.user) {
+      setShowSidebar(false);
+    }
+
+    // If we switch from mobile to desktop, always show the sidebar
+    if (!isMobileView) {
+      setShowSidebar(true);
+    }
+  }, [isMobileView, receiverId, chatState.currentChat.user]);
 
   // Handle receiverId from URL query parameter
   useEffect(() => {
@@ -219,24 +257,30 @@ const Chat = () => {
 
       // Check if the receiverId is in our conversations
       const conversation = chatState.conversations.find(
-        (conv) => conv.user._id === receiverId
+        (conv) => conv.user?._id === receiverId
       );
 
       if (conversation) {
         console.log(`Found conversation with ${receiverId}, selecting it`);
-        selectConversation(receiverId);
+
+        // If on mobile, switch to chat view
+        if (isMobileView) {
+          setShowSidebar(false);
+        }
+
+        // Set the current user directly to avoid multiple redirects
+        dispatch(setCurrentChatUser(conversation.user));
       } else {
         console.log(
           `Could not find conversation with ${receiverId} in loaded conversations`
         );
-        // We might want to handle this case differently - perhaps create a new conversation?
         setErrorState({
           type: "conversation",
           message: "Could not find the specified conversation",
         });
       }
     }
-  }, [receiverId, user?._id, chatState.conversations]);
+  }, [receiverId, user?._id, chatState.conversations, isMobileView, dispatch]);
 
   // Load chat history when currentChat changes
   useEffect(() => {
@@ -302,9 +346,19 @@ const Chat = () => {
     }
   }, [dispatch, receiverId, user?._id, chatState.conversations]);
 
-  // Scroll to bottom of messages when messages change
+  // Enhanced scroll handling for messages
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Use a short timeout to ensure DOM is updated before scrolling
+    const scrollTimer = setTimeout(() => {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "end",
+        });
+      }
+    }, 100);
+
+    return () => clearTimeout(scrollTimer);
   }, [chatState.currentChat.messages]);
 
   const handleSendMessage = () => {
@@ -313,24 +367,77 @@ const Chat = () => {
     const token = localStorage.getItem("token");
     if (!token || !user?._id) return;
 
-    // Send message via socket
+    // Get a fresh reference to the socket
+    const socket = getSocket();
+    if (!socket) {
+      console.error("Socket not available, attempting to reconnect");
+      initializeSocket(user._id);
+      setErrorState({
+        type: "socket",
+        message: "Reconnecting to chat server...",
+      });
+      return;
+    }
+
+    // Create a message object that matches the structure expected by the reducer
+    // This will immediately show the message in the UI
+    const messageText = message.trim();
+    const tempMessage = {
+      _id: Date.now().toString(), // Temporary ID
+      sender: {
+        _id: user._id,
+        name: user.name || "You",
+        username: user.username || "",
+        profilePicture: user.profilePicture || "",
+      },
+      receiver: {
+        _id: chatState.currentChat.user._id,
+        name: chatState.currentChat.user.name || "Receiver",
+        username: chatState.currentChat.user.username || "",
+        profilePicture: chatState.currentChat.user.profilePicture || "",
+      },
+      message: messageText,
+      createdAt: new Date().toISOString(),
+      read: false,
+    };
+
+    // Add the message to the UI immediately
+    dispatch(addMessage(tempMessage));
+
+    // Clear the message input
+    setMessage("");
+
+    // Clear typing timeout and emit stop typing
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+      setTypingTimeout(null);
+      emitStopTyping(user._id, chatState.currentChat.user._id);
+    }
+
+    // Now send via socket
+    console.log(`Sending message to ${chatState.currentChat.user.name}`);
     const success = sendPrivateMessage(
       user._id,
       chatState.currentChat.user._id,
-      message.trim(),
+      messageText,
       token
     );
 
-    if (success) {
-      // Clear message input
-      setMessage("");
+    // Since we've already added the message to UI and cleared the input,
+    // we only need to handle the error case
+    if (!success) {
+      // Show error but don't remove the message from UI
+      // as it might be delivered when connection resumes
+      setErrorState({
+        type: "socket",
+        message: "Message queued. Waiting for connection...",
+      });
 
-      // Clear typing timeout and emit stop typing
-      if (typingTimeout) {
-        clearTimeout(typingTimeout);
-        setTypingTimeout(null);
-        emitStopTyping(user._id, chatState.currentChat.user._id);
-      }
+      // Try to reconnect
+      reconnectSocket(user._id);
+    } else if (errorState?.type === "socket") {
+      // Clear any previous socket error on successful send
+      setErrorState(null);
     }
   };
 
@@ -363,7 +470,13 @@ const Chat = () => {
   };
 
   const selectConversation = (userId) => {
+    // Update URL
     router.push(`/chat?receiverId=${userId}`);
+
+    // On mobile, switch to chat view
+    if (isMobileView) {
+      setShowSidebar(false);
+    }
   };
 
   const formatTime = (timestamp) => {
@@ -374,22 +487,35 @@ const Chat = () => {
   return (
     <UserLayout>
       <div className={styles.chatContainer}>
-        {/* Mobile new chat button (only visible when in chat view on mobile) */}
-        {isMobileView && !showSidebar && (
+        {/* Exit button for mobile - to fully exit the chat interface */}
+        {isMobileView && (
           <button
-            className={styles.newChatButton}
-            onClick={() => setShowSidebar(true)}
+            className={styles.fullExitButton}
+            onClick={() => router.push("/dashboard")}
           >
-            +
+            Exit Chat
           </button>
         )}
 
-        {/* Connection status */}
-        {!socketStatus.connected && (
+        {/* Connection status - only show if it's been disconnected for a while */}
+        {!socketStatus.connected && retryCount > 0 && (
           <div className={styles.connectionAlert}>
-            <p>⚠️ Chat connection is offline. Messages may not send.</p>
-            <button onClick={() => reconnectSocket(user?._id)}>
-              Reconnect
+            <p>
+              <span role="img" aria-label="warning">
+                ⚠️
+              </span>
+              Connection offline.
+              {socketStatus.status === "disconnected"
+                ? " Attempting to reconnect..."
+                : " Check your internet connection."}
+            </p>
+            <button
+              onClick={() => {
+                reconnectSocket(user?._id);
+                setRetryCount((prev) => prev + 1);
+              }}
+            >
+              Try Again
             </button>
           </div>
         )}
@@ -397,7 +523,12 @@ const Chat = () => {
         {/* Error banner */}
         {errorState && (
           <div className={styles.errorAlert}>
-            <p>Error: {errorState.message}</p>
+            <p>
+              <span role="img" aria-label="warning">
+                ⚠️
+              </span>
+              {errorState.message}
+            </p>
             <button onClick={() => setErrorState(null)}>Dismiss</button>
           </div>
         )}
@@ -405,8 +536,8 @@ const Chat = () => {
         {/* Sidebar with conversations */}
         <div
           className={`${styles.sidebar} ${
-            !showSidebar && isMobileView ? styles.sidebarHidden : ""
-          }`}
+            isMobileView && !showSidebar ? styles.hidden : ""
+          } ${isMobileView ? styles.mobileSidebar : ""}`}
         >
           <div className={styles.sidebarHeader}>
             <h3>Messages</h3>
@@ -487,8 +618,8 @@ const Chat = () => {
         {/* Chat main area */}
         <div
           className={`${styles.chatMain} ${
-            showSidebar && isMobileView ? styles.chatMainHidden : ""
-          }`}
+            isMobileView && showSidebar ? styles.hidden : ""
+          } ${isMobileView ? styles.mobileChat : ""}`}
         >
           {chatState.currentChat.user ? (
             <>
@@ -496,10 +627,29 @@ const Chat = () => {
               <div className={styles.chatHeader}>
                 {isMobileView && (
                   <button
-                    className={styles.backButton}
-                    onClick={() => setShowSidebar(true)}
+                    className={styles.enhancedBackButton}
+                    onClick={() => {
+                      setShowSidebar(true);
+                      // Force clear the current chat if needed
+                      if (window.innerWidth <= 768) {
+                        router.push("/chat");
+                      }
+                    }}
                   >
-                    ← Back
+                    <svg
+                      width="20"
+                      height="20"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="M19 12H5"></path>
+                      <path d="M12 19l-7-7 7-7"></path>
+                    </svg>
+                    <span>Back</span>
                   </button>
                 )}
                 <div className={styles.chatHeaderUser}>
@@ -517,7 +667,7 @@ const Chat = () => {
                     <h3>
                       {chatState.currentChat.user?.name || "Unknown User"}
                     </h3>
-                    {chatState.isTyping.get(chatState.currentChat.user._id) && (
+                    {chatState.currentChat.isTyping && (
                       <p className={styles.typingIndicator}>typing...</p>
                     )}
                   </div>
@@ -575,10 +725,46 @@ const Chat = () => {
                   className={styles.sendButton}
                   onClick={handleSendMessage}
                   disabled={!message.trim()}
+                  aria-label="Send message"
                 >
-                  Send
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M22 2L11 13"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <path
+                      d="M22 2L15 22L11 13L2 9L22 2Z"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
                 </button>
               </div>
+
+              {/* Mobile Exit Chat button */}
+              {isMobileView && (
+                <div className={styles.mobileExitChat}>
+                  <button
+                    onClick={() => {
+                      setShowSidebar(true);
+                      router.push("/chat");
+                    }}
+                  >
+                    Return to All Chats
+                  </button>
+                </div>
+              )}
             </>
           ) : (
             <div className={styles.noChatSelected}>

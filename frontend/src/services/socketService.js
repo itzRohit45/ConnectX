@@ -4,6 +4,18 @@ import { BASE_URL } from "@/config";
 let socket;
 let isInitialized = false;
 
+// Add the missing getSocket function
+export const getSocket = () => {
+  if (!socket) {
+    console.warn("Socket requested but not initialized yet");
+    return null;
+  }
+  if (!socket.connected) {
+    console.warn("Socket exists but is not connected");
+  }
+  return socket;
+};
+
 export const initializeSocket = (userId) => {
   if (!isInitialized) {
     try {
@@ -32,6 +44,9 @@ export const initializeSocket = (userId) => {
       // Log connection events for debugging
       socket.on("connect", () => {
         console.log("Socket connected successfully", socket.id);
+
+        // Mark socket as initialized
+        isInitialized = true;
 
         // Join room with userId for private messaging
         if (userId) {
@@ -91,15 +106,36 @@ export const checkSocketConnection = () => {
 export const reconnectSocket = (userId) => {
   if (socket) {
     console.log("Forcing socket reconnection...");
-    socket.disconnect();
-    socket.connect();
 
-    if (userId) {
-      socket.emit("join", userId);
+    // If socket is already connected, just make sure we're in the room
+    if (socket.connected) {
+      console.log("Socket is already connected, ensuring room membership");
+      if (userId) {
+        socket.emit("join", userId);
+      }
+      return true;
     }
+
+    // Force disconnect and reconnect as a clean slate
+    socket.disconnect();
+
+    // Add one-time listener for when we reconnect
+    socket.once("connect", () => {
+      console.log(`Socket reconnected with ID: ${socket.id}`);
+      if (userId) {
+        console.log(`Re-joining room for user ${userId}`);
+        socket.emit("join", userId);
+      }
+      isInitialized = true;
+    });
+
+    socket.connect();
     return true;
+  } else {
+    console.log("No socket instance found, initializing new socket");
+    initializeSocket(userId);
+    return !!socket;
   }
-  return false;
 };
 
 // Clean up socket connection
