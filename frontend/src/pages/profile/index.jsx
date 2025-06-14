@@ -14,7 +14,13 @@ const ProfilePage = () => {
   const dispatch = useDispatch();
   const authState = useSelector((state) => state.auth);
   const postState = useSelector((state) => state.posts);
-  const [userProfile, setUserProfile] = useState({});
+  const [userProfile, setUserProfile] = useState({
+    userId: {},
+    bio: "",
+    currentPost: "",
+    pastWork: [],
+    education: [],
+  });
   const [userPosts, setUserPosts] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isModal2Open, setIsModal2Open] = useState(false);
@@ -29,6 +35,7 @@ const ProfilePage = () => {
     const { name, value } = e.target;
     setInputData({ ...inputData, [name]: value });
   };
+
   useEffect(() => {
     dispatch(getAboutUser({ token: localStorage.getItem("token") }));
     dispatch(getAllPosts());
@@ -44,17 +51,20 @@ const ProfilePage = () => {
     const { name, value } = e.target;
     setEducationData({ ...educationData, [name]: value });
   };
-  useEffect(() => {
-    dispatch(getAboutUser({ token: localStorage.getItem("token") }));
-    dispatch(getAllPosts());
-  }, []);
 
   useEffect(() => {
-    if (authState.user != undefined) {
-      setUserProfile(authState.user);
-      let post = postState.posts.filter(
-        (post) => post.userId.username === authState.user.userId?.username
-      );
+    if (authState.user) {
+      setUserProfile({
+        ...authState.user,
+        pastWork: authState.user.pastWork || [],
+        education: authState.user.education || [],
+      });
+
+      let post =
+        postState.posts?.filter(
+          (post) => post.userId?.username === authState.user?.userId?.username
+        ) || [];
+
       setUserPosts(post);
     }
   }, [authState.user, postState.posts]);
@@ -77,20 +87,24 @@ const ProfilePage = () => {
   };
 
   const updateProfileData = async () => {
+    if (!userProfile?.userId) return;
+
     const request = await clientServer.post("/user_update", {
       token: localStorage.getItem("token"),
-      name: userProfile.userId.name,
+      name: userProfile.userId.name || "",
     });
 
     const response = await clientServer.post("/update_profile_data", {
       token: localStorage.getItem("token"),
-      bio: userProfile.bio,
-      currentPost: userProfile.currentPost,
-      pastWork: userProfile.pastWork,
-      education: userProfile.education,
+      bio: userProfile.bio || "",
+      currentPost: userProfile.currentPost || "",
+      pastWork: userProfile.pastWork || [],
+      education: userProfile.education || [],
     });
+
     dispatch(getAboutUser({ token: localStorage.getItem("token") }));
   };
+
   return (
     <UserLayout>
       <DashboardLayout>
@@ -113,7 +127,9 @@ const ProfilePage = () => {
               ></input>
               <img
                 className={styles.backDrop}
-                src={`${BASE_URL}/${userProfile.userId.profilePicture}`}
+                src={`${BASE_URL}/${
+                  userProfile.userId?.profilePicture || "default.jpg"
+                }`}
                 alt="profilePic"
               />
             </div>
@@ -142,7 +158,7 @@ const ProfilePage = () => {
                         id="nameInput"
                         className={styles.nameEdit}
                         type="text"
-                        value={userProfile.userId.name}
+                        value={userProfile.userId?.name || ""}
                         onChange={(e) => {
                           setUserProfile({
                             ...userProfile,
@@ -160,7 +176,7 @@ const ProfilePage = () => {
                         id="postInput"
                         className={styles.currentPostEdit}
                         type="text"
-                        value={userProfile.currentPost}
+                        value={userProfile.currentPost || ""}
                         onChange={(e) => {
                           setUserProfile({
                             ...userProfile,
@@ -177,11 +193,14 @@ const ProfilePage = () => {
                     </label>
                     <textarea
                       id="bioInput"
-                      value={userProfile.bio}
+                      value={userProfile.bio || ""}
                       onChange={(e) => {
                         setUserProfile({ ...userProfile, bio: e.target.value });
                       }}
-                      rows={Math.max(3, Math.ceil(userProfile.bio.length / 80))}
+                      rows={Math.max(
+                        3,
+                        Math.ceil((userProfile.bio?.length || 0) / 80)
+                      )}
                       style={{ width: "100%" }}
                     ></textarea>
                   </div>
@@ -193,7 +212,7 @@ const ProfilePage = () => {
             <div className={styles.workHistory}>
               <h3>Work History</h3>
               <div className={styles.workHistory_cont}>
-                {userProfile.pastWork.map((work, index) => (
+                {(userProfile.pastWork || []).map((work, index) => (
                   <div key={index} className={styles.workHistoryCard}>
                     <p
                       style={{
@@ -204,9 +223,10 @@ const ProfilePage = () => {
                         marginBottom: "5px",
                       }}
                     >
-                      Company: {work.company} | Position: {work.position}
+                      Company: {work?.company || "N/A"} | Position:{" "}
+                      {work?.position || "N/A"}
                     </p>
-                    <p>Year: {work.years}</p>
+                    <p>Year: {work?.years || "N/A"}</p>
                   </div>
                 ))}
                 <button
@@ -223,7 +243,7 @@ const ProfilePage = () => {
             <div className={styles.workHistory}>
               <h3>Education</h3>
               <div className={styles.workHistory_cont}>
-                {userProfile.education.map((edu, index) => (
+                {(userProfile.education || []).map((edu, index) => (
                   <div key={index} className={styles.workHistoryCard}>
                     <p
                       style={{
@@ -234,9 +254,10 @@ const ProfilePage = () => {
                         marginBottom: "5px",
                       }}
                     >
-                      School/College: {edu.school} | Degree: {edu.degree}
+                      School/College: {edu?.school || "N/A"} | Degree:{" "}
+                      {edu?.degree || "N/A"}
                     </p>
-                    <p>Stream: {edu.fieldOfStudy}</p>
+                    <p>Stream: {edu?.fieldOfStudy || "N/A"}</p>
                   </div>
                 ))}
                 <button
@@ -249,7 +270,7 @@ const ProfilePage = () => {
                 </button>
               </div>
             </div>
-            {userProfile != authState.user && (
+            {userProfile !== authState.user && (
               <div
                 onClick={() => {
                   updateProfileData();
@@ -300,7 +321,7 @@ const ProfilePage = () => {
                 onClick={() => {
                   setUserProfile({
                     ...userProfile,
-                    pastWork: [...userProfile.pastWork, inputData],
+                    pastWork: [...(userProfile.pastWork || []), inputData],
                   });
                   setIsModalOpen(false);
                 }}
@@ -350,7 +371,10 @@ const ProfilePage = () => {
                 onClick={() => {
                   setUserProfile({
                     ...userProfile,
-                    education: [...userProfile.education, educationData],
+                    education: [
+                      ...(userProfile.education || []),
+                      educationData,
+                    ],
                   });
                   setIsModal2Open(false);
                 }}

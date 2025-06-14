@@ -57,7 +57,7 @@ const authSlice = createSlice({
       .addCase(loginUser.rejected, (state, action) => {
         state.isLoading = false;
         state.isError = true;
-        state.message = action.payload.message;
+        state.message = action.payload?.message;
       })
       .addCase(registerUser.pending, (state) => {
         state.isLoading = true;
@@ -96,7 +96,7 @@ const authSlice = createSlice({
         //Ensure connections only show the OTHER person
         state.connections = action.payload.acceptedConnections.map(
           (connection) => {
-            return connection.userId._id === loggedInUserId
+            return connection?.userId?._id === loggedInUserId
               ? connection.connectionId
               : connection.userId;
           }

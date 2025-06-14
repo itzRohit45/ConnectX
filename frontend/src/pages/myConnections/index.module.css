@@ -66,3 +66,28 @@
     border-radius: 10px;
     cursor: pointer;
 }
+
+.chatBtn {
+    margin-top: 6px;
+    padding-inline: 1rem;
+    padding-block: 0.5rem;
+    outline: none;
+    border: none;
+    background-color: #6366f1;
+    color: white;
+    border-radius: 10px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.2s ease;
+}
+
+.chatBtn:hover {
+    background-color: #4f46e5;
+}
+
+.actionButtons {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-left: auto;
+}

@@ -22,13 +22,21 @@ const Discover = () => {
   // Get the logged-in user ID
   const loggedInUserId = authState.user?.userId?._id;
 
-  // Filter users: Remove logged-in user from the list
-  const filteredUsers = authState.all_users?.filter(
-    (user) =>
-      user.userId._id !== loggedInUserId && // ✅ Exclude logged-in user
-      (user.userId.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        user.userId.username.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  // Filter users: Remove logged-in user from the list and handle null/undefined userId
+  const filteredUsers = authState.all_users
+    ?.filter((user) => {
+      // Skip users with null or undefined userId
+      if (!user || !user.userId) return false;
+
+      return (
+        user.userId._id !== loggedInUserId && // ✅ Exclude logged-in user
+        (user.userId.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          user.userId.username
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()))
+      );
+    })
+    ?.filter(Boolean);
 
   return (
     <UserLayout>
@@ -44,7 +52,7 @@ const Discover = () => {
         </div>
 
         <div className={styles.allUserProfile}>
-          {authState.all_profiles_fetched && filteredUsers.length > 0 ? (
+          {authState.all_profiles_fetched && filteredUsers?.length > 0 ? (
             filteredUsers.map((user) => (
               <div
                 onClick={() => {
@@ -55,12 +63,14 @@ const Discover = () => {
               >
                 <img
                   className={styles.userCard_image}
-                  src={`${BASE_URL}/${user.userId.profilePicture}`}
+                  src={`${BASE_URL}/${
+                    user.userId.profilePicture || "default.jpg"
+                  }`}
                   alt="profile"
                 />
                 <div className={styles.name}>
-                  <h2>{user.userId.name}</h2>
-                  <p>{user.userId.username}</p>
+                  <h2>{user.userId.name || "Unknown"}</h2>
+                  <p>{user.userId.username || "unknown"}</p>
                 </div>
               </div>
             ))

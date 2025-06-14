@@ -93,23 +93,49 @@ const DashboardLayout = ({ children }) => {
           <div className={styles.homeContainer_extraContainer}>
             <h3>Top Profiles</h3>
             {authState.all_profiles_fetched &&
+            authState.all_users &&
+            authState.all_users.length > 0 ? (
               authState.all_users.map((profile) => {
+                if (!profile) return null;
                 return (
                   <div
                     key={profile._id}
                     className={styles.extraContainer_profile}
+                    onClick={() => {
+                      if (profile.userId?.username) {
+                        router.push(`/view_profile/${profile.userId.username}`);
+                      }
+                    }}
                   >
-                    <img
-                      src={`${BASE_URL}/${profile.userId.profilePicture}`}
-                      alt="Profile"
-                      className={styles.profileImage}
-                    />
-                    <p className={styles.profileName}>
-                      {profile.userId.username}
-                    </p>
+                    {profile.userId ? (
+                      <>
+                        <img
+                          src={`${BASE_URL}/${
+                            profile.userId.profilePicture || "default.jpg"
+                          }`}
+                          alt="Profile"
+                          className={styles.profileImage}
+                        />
+                        <p className={styles.profileName}>
+                          {profile.userId.username || "unknown"}
+                        </p>
+                      </>
+                    ) : (
+                      <>
+                        <img
+                          src={`${BASE_URL}/default.jpg`}
+                          alt="Default Profile"
+                          className={styles.profileImage}
+                        />
+                        <p className={styles.profileName}>Unknown User</p>
+                      </>
+                    )}
                   </div>
                 );
-              })}
+              })
+            ) : (
+              <p>No profiles to display</p>
+            )}
           </div>
         </div>
       </div>

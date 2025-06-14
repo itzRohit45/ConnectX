@@ -22,7 +22,7 @@ export default function ViewProfilePage({ userProfile }) {
   const [connectionStatus, setConnectionStatus] = useState("Connect");
 
   const loggedInUserId = authState.user?.userId?._id;
-  const isOwnProfile = loggedInUserId === userProfile.userId._id;
+  const isOwnProfile = loggedInUserId === userProfile?.userId?._id;
 
   useEffect(() => {
     dispatch(getAllConnections({ token: localStorage.getItem("token") }));
@@ -30,22 +30,29 @@ export default function ViewProfilePage({ userProfile }) {
   }, [dispatch]);
 
   useEffect(() => {
-    let post = postState.posts.filter(
-      (post) => post.userId.username === router.query.username
-    );
+    // Add null checks to filter posts safely
+    let post =
+      postState.posts?.filter(
+        (post) => post?.userId?.username === router.query.username
+      ) || [];
     setUserPosts(post);
-  }, [postState.posts]);
+  }, [postState.posts, router.query.username]);
 
   useEffect(() => {
-    if (!authState.connections || !authState.sentRequests) return;
+    if (
+      !authState.connections ||
+      !authState.sentRequests ||
+      !userProfile?.userId?._id
+    )
+      return;
 
     // Check if user is already connected
     const isConnected = authState.connections.some(
-      (conn) => conn?._id === userProfile.userId._id
+      (conn) => conn?._id === userProfile?.userId?._id
     );
 
     const isRequestPending = authState.sentRequests.some(
-      (req) => req?.connectionId?._id === userProfile.userId._id
+      (req) => req?.connectionId?._id === userProfile?.userId?._id
     );
 
     if (isConnected) {
@@ -55,13 +62,13 @@ export default function ViewProfilePage({ userProfile }) {
     } else {
       setConnectionStatus("Connect");
     }
-  }, [authState.connections, authState.sentRequests, userProfile.userId]);
+  }, [authState.connections, authState.sentRequests, userProfile?.userId]);
 
   const handleConnectionRequest = () => {
     dispatch(
       sendConnectionRequest({
         token: localStorage.getItem("token"),
-        user_id: userProfile.userId._id,
+        user_id: userProfile?.userId?._id,
       })
     );
     setConnectionStatus("Pending");
@@ -74,7 +81,9 @@ export default function ViewProfilePage({ userProfile }) {
           <div className={styles.backDropContainer}>
             <img
               className={styles.backDrop}
-              src={`${BASE_URL}/${userProfile.userId.profilePicture}`}
+              src={`${BASE_URL}/${
+                userProfile?.userId?.profilePicture || "default.jpg"
+              }`}
               alt="profilePic"
             />
           </div>
@@ -88,9 +97,9 @@ export default function ViewProfilePage({ userProfile }) {
                     gap: "1.2rem",
                   }}
                 >
-                  <h2>{userProfile.userId.name}</h2>
+                  <h2>{userProfile?.userId?.name || "Unknown User"}</h2>
                   <p style={{ color: "grey", marginTop: "4px" }}>
-                    @{userProfile.userId.username}
+                    @{userProfile?.userId?.username || "unknown"}
                   </p>
                 </div>
                 <div
@@ -115,32 +124,38 @@ export default function ViewProfilePage({ userProfile }) {
                   {!isOwnProfile && connectionStatus === "Connected" && (
                     <button className={styles.connectedBtn2}>Connected</button>
                   )}
-                  <div
-                    className={styles.download}
-                    onClick={async () => {
-                      const response = await clientServer.get(
-                        `/user/download_resume?id=${userProfile.userId._id}`
-                      );
-                      window.open(
-                        `${BASE_URL}/${response.data.message}`,
-                        "blank"
-                      );
-                    }}
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      strokeWidth={1.5}
-                      stroke="currentColor"
+                  {userProfile?.userId?._id && (
+                    <div
+                      className={styles.download}
+                      onClick={async () => {
+                        try {
+                          const response = await clientServer.get(
+                            `/user/download_resume?id=${userProfile.userId._id}`
+                          );
+                          window.open(
+                            `${BASE_URL}/${response.data.message}`,
+                            "blank"
+                          );
+                        } catch (error) {
+                          console.error("Failed to download resume:", error);
+                        }
+                      }}
                     >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
-                      />
-                    </svg>
-                  </div>
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        strokeWidth={1.5}
+                        stroke="currentColor"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3"
+                        />
+                      </svg>
+                    </div>
+                  )}
                 </div>
                 <div
                   style={{
@@ -148,26 +163,40 @@ export default function ViewProfilePage({ userProfile }) {
                     width: "fit-content",
                   }}
                 >
-                  <p style={{ marginBottom: "5px" }}>Bio: {userProfile.bio}</p>
-                  <p>Current post: {userProfile.currentPost}</p>
+                  <p style={{ marginBottom: "5px" }}>
+                    Bio: {userProfile?.bio || "No bio available"}
+                  </p>
+                  <p>
+                    Current post:{" "}
+                    {userProfile?.currentPost || "No current post"}
+                  </p>
                 </div>
               </div>
               <div style={{ flex: "0.3" }}>
                 <h3>Recent Activity</h3>
-                {userPosts.map((post) => (
-                  <div key={post._id} className={styles.postCard}>
-                    <div className={styles.card}>
-                      <div className={styles.card_profileContainer}>
-                        {post.media !== "" ? (
-                          <img src={`${BASE_URL}/${post.media}`} alt="media" />
-                        ) : (
-                          <div style={{ width: "3.4rem", height: "3.4rem" }} />
-                        )}
-                        <p>{post.body}</p>
+                {userPosts.length > 0 ? (
+                  userPosts.map((post) => (
+                    <div key={post._id} className={styles.postCard}>
+                      <div className={styles.card}>
+                        <div className={styles.card_profileContainer}>
+                          {post.media ? (
+                            <img
+                              src={`${BASE_URL}/${post.media}`}
+                              alt="media"
+                            />
+                          ) : (
+                            <div
+                              style={{ width: "3.4rem", height: "3.4rem" }}
+                            />
+                          )}
+                          <p>{post.body}</p>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p>No posts to display</p>
+                )}
               </div>
             </div>
           </div>
@@ -176,15 +205,19 @@ export default function ViewProfilePage({ userProfile }) {
           <div className={styles.workHistory}>
             <h3>Work History</h3>
             <div className={styles.workHistory_cont}>
-              {userProfile.pastWork.map((work, index) => (
-                <div key={index} className={styles.workHistoryCard}>
-                  <p>
-                    <strong>Company:</strong> {work.company} |{" "}
-                    <strong>Position:</strong> {work.position}
-                  </p>
-                  <p>Year: {work.years}</p>
-                </div>
-              ))}
+              {userProfile?.pastWork && userProfile.pastWork.length > 0 ? (
+                userProfile.pastWork.map((work, index) => (
+                  <div key={index} className={styles.workHistoryCard}>
+                    <p>
+                      <strong>Company:</strong> {work?.company || "N/A"} |{" "}
+                      <strong>Position:</strong> {work?.position || "N/A"}
+                    </p>
+                    <p>Year: {work?.years || "N/A"}</p>
+                  </div>
+                ))
+              ) : (
+                <p>No work history to display</p>
+              )}
             </div>
           </div>
 
@@ -192,15 +225,19 @@ export default function ViewProfilePage({ userProfile }) {
           <div className={styles.workHistory}>
             <h3>Education</h3>
             <div className={styles.workHistory_cont}>
-              {userProfile.education.map((edu, index) => (
-                <div key={index} className={styles.workHistoryCard}>
-                  <p>
-                    <strong>School/College:</strong> {edu.school} |{" "}
-                    <strong>Degree:</strong> {edu.degree}
-                  </p>
-                  <p>Stream: {edu.fieldOfStudy}</p>
-                </div>
-              ))}
+              {userProfile?.education && userProfile.education.length > 0 ? (
+                userProfile.education.map((edu, index) => (
+                  <div key={index} className={styles.workHistoryCard}>
+                    <p>
+                      <strong>School/College:</strong> {edu?.school || "N/A"} |{" "}
+                      <strong>Degree:</strong> {edu?.degree || "N/A"}
+                    </p>
+                    <p>Stream: {edu?.fieldOfStudy || "N/A"}</p>
+                  </div>
+                ))
+              ) : (
+                <p>No education history to display</p>
+              )}
             </div>
           </div>
         </div>
@@ -210,9 +247,13 @@ export default function ViewProfilePage({ userProfile }) {
 }
 
 export async function getServerSideProps(context) {
-  const request = await clientServer.get("/user/get_profile_with_username", {
-    params: { username: context.query.username },
-  });
-
-  return { props: { userProfile: request.data.profile } };
+  try {
+    const request = await clientServer.get("/user/get_profile_with_username", {
+      params: { username: context.query.username },
+    });
+    return { props: { userProfile: request.data.profile || {} } };
+  } catch (error) {
+    console.error("Error fetching user profile:", error);
+    return { props: { userProfile: {} } };
+  }
 }

@@ -1,0 +1,13 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Backend Server",
+			"type": "shell",
+			"command": "cd /Users/rohit/ConnectX/backend && npm run dev",
+			"isBackground": true,
+			"group": "start",
+			"problemMatcher": []
+		}
+	]
+}

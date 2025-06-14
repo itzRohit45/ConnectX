@@ -3,7 +3,9 @@ import styles from "./styles.module.css";
 import { useRouter } from "next/router";
 import { useDispatch, useSelector } from "react-redux";
 import Person4Icon from "@mui/icons-material/Person4";
+import ChatIcon from "@mui/icons-material/Chat";
 import { reset } from "@/config/redux/reducer/authReducer";
+import { getUserConversations } from "@/config/redux/action/chatAction";
 
 const NavBar = () => {
   const router = useRouter();
@@ -11,8 +13,26 @@ const NavBar = () => {
   const authState = useSelector((state) => state.auth);
   const [showMenu, setShowMenu] = useState(false);
   const menuRef = useRef(null);
+  const chatState = useSelector((state) => state.chat);
 
   const toggleMenu = () => setShowMenu((prev) => !prev);
+
+  // Get unread message count
+  const unreadMessagesCount =
+    chatState.conversations?.reduce(
+      (total, conv) => total + (conv.unreadCount || 0),
+      0
+    ) || 0;
+
+  // Load conversations when logged in
+  useEffect(() => {
+    if (authState.profileFetched) {
+      const token = localStorage.getItem("token");
+      if (token) {
+        dispatch(getUserConversations({ token }));
+      }
+    }
+  }, [authState.profileFetched, dispatch]);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -66,21 +86,36 @@ const NavBar = () => {
 
         {authState.profileFetched && (
           <div className={styles.profileContainer}>
+            <div
+              className={styles.iconWrapper}
+              onClick={() => router.push("/chat")}
+              style={{ marginRight: "10px" }}
+            >
+              <ChatIcon fontSize="large" />
+              {unreadMessagesCount > 0 && (
+                <span className={styles.unreadBadge}>
+                  {unreadMessagesCount}
+                </span>
+              )}
+            </div>
+
             <div className={styles.iconWrapper} onClick={toggleMenu}>
               <Person4Icon fontSize="large" />
             </div>
 
-            {showMenu && (
+            {showMenu && authState.user && authState.user.userId && (
               <div className={styles.dropdownMenu} ref={menuRef}>
                 <p
                   onClick={() => {
-                    router.push(
-                      `/view_profile/${authState.user.userId.username}`
-                    );
+                    if (authState.user?.userId?.username) {
+                      router.push(
+                        `/view_profile/${authState.user.userId.username}`
+                      );
+                    }
                   }}
                   className={styles.userName}
                 >
-                  {authState.user.userId.name}
+                  {authState.user?.userId?.name || "User"}
                 </p>
                 <div
                   style={{ cursor: "pointer", borderBottom: "1px solid #ccc" }}
@@ -90,6 +125,7 @@ const NavBar = () => {
                 >
                   Edit Profile
                 </div>
+
                 <div
                   className={styles.logoutBtn}
                   onClick={() => {
