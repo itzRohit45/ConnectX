@@ -18,6 +18,8 @@ import {
   sendPrivateMessage,
   emitTyping,
   emitStopTyping,
+  checkSocketConnection,
+  reconnectSocket,
 } from "@/services/socketService";
 import { BASE_URL } from "@/config";
 import styles from "./index.module.css";
@@ -35,20 +37,110 @@ const Chat = () => {
 
   const [message, setMessage] = useState("");
   const [typingTimeout, setTypingTimeout] = useState(null);
+  const [socketStatus, setSocketStatus] = useState({ connected: false });
+  const [retryCount, setRetryCount] = useState(0);
+  const [loadingMessages, setLoadingMessages] = useState(false);
+  const [errorState, setErrorState] = useState(null);
   const messagesEndRef = useRef(null);
 
   // Initialize socket connection when component mounts
   useEffect(() => {
     if (user?._id) {
       // Initialize socket connection
-      initializeSocket(user._id);
+      try {
+        console.log("Initializing socket connection with user ID:", user._id);
+        initializeSocket(user._id);
 
-      // Get user conversations
-      const token = localStorage.getItem("token");
-      if (token) {
-        dispatch(getUserConversations({ token }));
+        // Check socket connection status periodically
+        const intervalId = setInterval(() => {
+          const status = checkSocketConnection();
+          setSocketStatus(status);
+
+          // Auto reconnect if disconnected and we haven't retried too many times
+          if (!status.connected && retryCount < 3) {
+            console.log(
+              `Socket disconnected. Attempting reconnection #${retryCount + 1}`
+            );
+            reconnectSocket(user._id);
+            setRetryCount((prev) => prev + 1);
+          }
+        }, 5000);
+
+        return () => clearInterval(intervalId);
+      } catch (error) {
+        console.error("Socket initialization error:", error);
+        setErrorState({
+          type: "socket",
+          message: "Failed to connect to chat server",
+        });
       }
+    }
+  }, [user?._id]);
 
+  // Get user conversations with error handling and retries
+  useEffect(() => {
+    const fetchConversations = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (token && authState.profileFetched) {
+          console.log(
+            "About to dispatch getUserConversations with token:",
+            token.substring(0, 10) + "..."
+          );
+
+          // Try using direct fetch API as a fallback if dispatch fails
+          try {
+            await dispatch(getUserConversations({ token })).unwrap();
+            setErrorState(null);
+          } catch (dispatchError) {
+            console.error(
+              "Redux dispatch failed, trying direct fetch:",
+              dispatchError
+            );
+
+            // Direct fetch as backup
+            const response = await fetch(
+              `${BASE_URL}/chat/conversations?token=${token}`
+            );
+            if (response.ok) {
+              const data = await response.json();
+              console.log("Direct fetch successful:", data);
+              // Handle the data manually
+              setErrorState(null);
+            } else {
+              throw new Error(
+                `API returned ${response.status}: ${response.statusText}`
+              );
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching conversations:", error);
+        setErrorState({
+          type: "api",
+          message: `Failed to load conversations: ${
+            error.message || "Unknown error"
+          }`,
+          details: error.response?.data || error.message,
+        });
+
+        // Retry after a delay if we haven't tried too many times
+        if (retryCount < 3) {
+          setTimeout(() => {
+            console.log(`Retrying conversation fetch #${retryCount + 1}`);
+            setRetryCount((prev) => prev + 1);
+            // The next useEffect cycle will try again
+          }, 3000);
+        }
+      }
+    };
+
+    fetchConversations();
+  }, [authState.profileFetched, dispatch, retryCount]);
+
+  // Listen for socket events and load chat history
+  useEffect(() => {
+    if (user?._id) {
       // Listen for socket events
       const socket = getSocket();
       if (socket) {
@@ -89,19 +181,15 @@ const Chat = () => {
             dispatch(setTypingStatus({ sender: data.sender, isTyping: false }));
           }
         });
-      }
 
-      return () => {
-        // Clean up socket events when component unmounts
-        const socket = getSocket();
-        if (socket) {
+        return () => {
           socket.off("private message");
           socket.off("typing");
           socket.off("stop typing");
-        }
-      };
+        };
+      }
     }
-  }, [dispatch, user?._id]);
+  }, [user?._id, chatState.currentChat.user, dispatch]);
 
   // Detect mobile view
   useEffect(() => {
@@ -123,6 +211,68 @@ const Chat = () => {
       setShowSidebar(false);
     }
   }, [isMobileView, receiverId]);
+
+  // Handle receiverId from URL query parameter
+  useEffect(() => {
+    if (receiverId && user?._id && chatState.conversations.length > 0) {
+      console.log(`Received receiverId from URL: ${receiverId}`);
+
+      // Check if the receiverId is in our conversations
+      const conversation = chatState.conversations.find(
+        (conv) => conv.user._id === receiverId
+      );
+
+      if (conversation) {
+        console.log(`Found conversation with ${receiverId}, selecting it`);
+        selectConversation(receiverId);
+      } else {
+        console.log(
+          `Could not find conversation with ${receiverId} in loaded conversations`
+        );
+        // We might want to handle this case differently - perhaps create a new conversation?
+        setErrorState({
+          type: "conversation",
+          message: "Could not find the specified conversation",
+        });
+      }
+    }
+  }, [receiverId, user?._id, chatState.conversations]);
+
+  // Load chat history when currentChat changes
+  useEffect(() => {
+    if (chatState.currentChat.user?._id && user?._id) {
+      loadChatHistory(chatState.currentChat.user._id);
+    }
+  }, [chatState.currentChat.user?._id, user?._id]);
+
+  // Load chat history for a specific user
+  const loadChatHistory = async (receiverId) => {
+    try {
+      setLoadingMessages(true);
+      const token = localStorage.getItem("token");
+      if (token) {
+        await dispatch(getChatHistory({ token, receiverId })).unwrap();
+
+        // Mark messages as read
+        dispatch(
+          markMessagesAsRead({
+            token,
+            senderId: receiverId,
+          })
+        );
+
+        setErrorState(null);
+      }
+    } catch (error) {
+      console.error("Error loading chat history:", error);
+      setErrorState({
+        type: "chat-history",
+        message: "Failed to load chat messages",
+      });
+    } finally {
+      setLoadingMessages(false);
+    }
+  };
 
   // Load chat when receiverId changes or if a user is selected from conversation list
   useEffect(() => {
@@ -234,6 +384,24 @@ const Chat = () => {
           </button>
         )}
 
+        {/* Connection status */}
+        {!socketStatus.connected && (
+          <div className={styles.connectionAlert}>
+            <p>⚠️ Chat connection is offline. Messages may not send.</p>
+            <button onClick={() => reconnectSocket(user?._id)}>
+              Reconnect
+            </button>
+          </div>
+        )}
+
+        {/* Error banner */}
+        {errorState && (
+          <div className={styles.errorAlert}>
+            <p>Error: {errorState.message}</p>
+            <button onClick={() => setErrorState(null)}>Dismiss</button>
+          </div>
+        )}
+
         {/* Sidebar with conversations */}
         <div
           className={`${styles.sidebar} ${
@@ -242,10 +410,27 @@ const Chat = () => {
         >
           <div className={styles.sidebarHeader}>
             <h3>Messages</h3>
+            {/* Status indicator */}
+            <div
+              className={`${styles.statusIndicator} ${
+                socketStatus.connected ? styles.connected : styles.disconnected
+              }`}
+            >
+              {socketStatus.connected ? "Online" : "Offline"}
+            </div>
           </div>
           <div className={styles.conversationList}>
-            {chatState.conversations.length === 0 && (
-              <div className={styles.noConversations}>No conversations yet</div>
+            {chatState.loading && (
+              <div className={styles.loadingState}>
+                Loading conversations...
+              </div>
+            )}
+            {!chatState.loading && chatState.conversations.length === 0 && (
+              <div className={styles.noConversations}>
+                {errorState?.type === "api"
+                  ? "Failed to load conversations. Please try again."
+                  : "No conversations yet. Connect with users to start chatting."}
+              </div>
             )}
             {chatState.conversations.map((conversation) => (
               <div
@@ -258,20 +443,20 @@ const Chat = () => {
                 onClick={() => selectConversation(conversation.user._id)}
               >
                 <div className={styles.conversationAvatar}>
-                  {conversation.user.profilePicture ? (
+                  {conversation.user?.profilePicture ? (
                     <img
                       src={`${BASE_URL}/${conversation.user.profilePicture}`}
-                      alt={conversation.user.name}
+                      alt={conversation.user?.name || "User"}
                     />
                   ) : (
                     <div className={styles.defaultAvatar}>
-                      {conversation.user.name?.charAt(0)}
+                      {conversation.user?.name?.charAt(0) || "?"}
                     </div>
                   )}
                 </div>
                 <div className={styles.conversationInfo}>
                   <div className={styles.conversationHeader}>
-                    <h4>{conversation.user.name}</h4>
+                    <h4>{conversation.user?.name || "Unknown User"}</h4>
                     {conversation.lastMessage && (
                       <span className={styles.messageTime}>
                         {formatTime(conversation.lastMessage.createdAt)}
@@ -318,20 +503,22 @@ const Chat = () => {
                   </button>
                 )}
                 <div className={styles.chatHeaderUser}>
-                  {chatState.currentChat.user.profilePicture ? (
+                  {chatState.currentChat.user?.profilePicture ? (
                     <img
                       src={`${BASE_URL}/${chatState.currentChat.user.profilePicture}`}
-                      alt={chatState.currentChat.user.name}
+                      alt={chatState.currentChat.user?.name || "User"}
                     />
                   ) : (
                     <div className={styles.defaultAvatar}>
-                      {chatState.currentChat.user.name?.charAt(0)}
+                      {chatState.currentChat.user?.name?.charAt(0) || "?"}
                     </div>
                   )}
                   <div className={styles.userInfo}>
-                    <h3>{chatState.currentChat.user.name}</h3>
-                    {chatState.currentChat.isTyping && (
-                      <span className={styles.typingIndicator}>typing...</span>
+                    <h3>
+                      {chatState.currentChat.user?.name || "Unknown User"}
+                    </h3>
+                    {chatState.isTyping.get(chatState.currentChat.user._id) && (
+                      <p className={styles.typingIndicator}>typing...</p>
                     )}
                   </div>
                 </div>

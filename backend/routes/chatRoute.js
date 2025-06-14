@@ -7,8 +7,14 @@ import {
 
 const router = Router();
 
-router.route("/chat/history").get(getChatHistory);
-router.route("/chat/conversations").get(getUserConversations);
-router.route("/chat/mark-read").post(markMessagesAsRead);
+// Define chat routes
+router.get("/chat/history", getChatHistory);
+router.get("/chat/conversations", getUserConversations);
+router.post("/chat/mark-read", markMessagesAsRead);
+
+// Add a debug endpoint
+router.get("/chat/status", (req, res) => {
+  res.status(200).json({ status: "Chat service operational" });
+});
 
 export default router;

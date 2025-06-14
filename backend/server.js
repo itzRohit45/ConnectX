@@ -25,10 +25,29 @@ console.log(uri);
 
 app.use(cors());
 app.use(express.json());
+
+// Check if server is responsive
+app.get("/users/check-server", (req, res) => {
+  res.status(200).json({ status: "Server is up and running" });
+});
+
 app.use(postRoutes);
 app.use(userRoutes);
 app.use(chatRoutes);
 app.use(express.static("uploads"));
+
+// Global error handler middleware
+app.use((err, req, res, next) => {
+  console.error("Global error handler caught:", err);
+  res.status(500).json({
+    message: "Server error encountered",
+    error:
+      process.env.NODE_ENV !== "production"
+        ? err.message
+        : "Internal Server Error",
+    path: req.path,
+  });
+});
 
 // Handle socket connections
 io.on("connection", (socket) => {
