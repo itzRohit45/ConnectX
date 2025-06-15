@@ -20,7 +20,7 @@ ConnectX is a full-stack social networking platform built to offer an authentic 
 
 ### 🚀 Live Demo
 
-Visit [ConnectX Live Site](https://connectx-3was.onrender.com)
+Visit [ConnectX Live Site](https://connect-x-ebon.vercel.app/)
 
 ---
 
