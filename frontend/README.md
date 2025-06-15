@@ -1,7 +1,7 @@
 # ConnectX
 
 <div align="center">
-  <img src="./logo.webp" alt="ConnectX Logo" width="120" />
+  <img src="./public/images/logo.webp" alt="ConnectX Logo" width="120" />
   <h3>Connect with Friends without Exaggeration</h3>
   <p>A true social media platform, with stories no bluffs.</p>
 
@@ -20,7 +20,7 @@ ConnectX is a full-stack social networking platform built to offer an authentic 
 
 ### 🚀 Live Demo
 
-Visit [ConnectX Live Site](https://connect-x-ebon.vercel.app/)
+Visit [ConnectX Live Site](https://connectx-3was.onrender.com)
 
 ---
 
