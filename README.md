@@ -131,31 +131,6 @@ Visit [ConnectX Live Site](https://connectx-3was.onrender.com)
 
 ---
 
-## 📂 Project Structure
-
-```
-connectx/
-├── backend/
-│   ├── controllers/     # Request handlers
-│   ├── models/          # Database schemas
-│   ├── routes/          # API endpoints
-│   ├── uploads/         # User uploaded content
-│   └── server.js        # Entry point
-│
-└── frontend/
-    ├── public/          # Static assets
-    └── src/
-        ├── Components/  # Reusable UI components
-        ├── config/      # Configuration files
-        │   └── redux/   # State management
-        ├── layout/      # Page layouts
-        ├── pages/       # Application pages
-        ├── services/    # External services
-        └── styles/      # Global styles
-```
-
----
-
 ## 🔧 Development
 
 ### Available Scripts
